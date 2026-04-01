@@ -1,0 +1,119 @@
+﻿{
+    "name":  "GLM5-Forge",
+    "path":  "D:\\GLM5-Forge",
+    "generated_at":  "2026-04-01T19:13:35",
+    "tree":  [
+                 {
+                     "name":  "flashmla_cu126_patch",
+                     "type":  "directory",
+                     "children":  [
+                                      {
+                                          "name":  "api.cpp",
+                                          "type":  "file",
+                                          "size":  1317
+                                      },
+                                      {
+                                          "name":  "check_cu126_bridge.py",
+                                          "type":  "file",
+                                          "size":  1776
+                                      },
+                                      {
+                                          "name":  "flash_mla_interface.py",
+                                          "type":  "file",
+                                          "size":  25451
+                                      },
+                                      {
+                                          "name":  "helpers.cuh",
+                                          "type":  "file",
+                                          "size":  1572
+                                      },
+                                      {
+                                          "name":  "README.md",
+                                          "type":  "file",
+                                          "size":  776
+                                      },
+                                      {
+                                          "name":  "run_cu126_sparse_bypass.py",
+                                          "type":  "file",
+                                          "size":  3726
+                                      },
+                                      {
+                                          "name":  "setup.py",
+                                          "type":  "file",
+                                          "size":  7157
+                                      },
+                                      {
+                                          "name":  "sparse_decode.h",
+                                          "type":  "file",
+                                          "size":  19608
+                                      },
+                                      {
+                                          "name":  "sparse_fwd.h",
+                                          "type":  "file",
+                                          "size":  12768
+                                      },
+                                      {
+                                          "name":  "test_cu126_sparse_decode_fallback.py",
+                                          "type":  "file",
+                                          "size":  2681
+                                      }
+                                  ]
+                 },
+                 {
+                     "name":  "glm5",
+                     "type":  "directory",
+                     "children":  [
+                                      {
+                                          "name":  "modeling_glm5_flashdsa_reconstructed.py",
+                                          "type":  "file",
+                                          "size":  37823
+                                      },
+                                      {
+                                          "name":  "modeling_glm5_mla_reconstructed.py",
+                                          "type":  "file",
+                                          "size":  31267
+                                      },
+                                      {
+                                          "name":  "modeling_glm5_reconstructed.py",
+                                          "type":  "file",
+                                          "size":  30178
+                                      },
+                                      {
+                                          "name":  "run_flash_mla_heads_remote.sh",
+                                          "type":  "file",
+                                          "size":  329
+                                      },
+                                      {
+                                          "name":  "test_flash_dsa_glm5_remote.py",
+                                          "type":  "file",
+                                          "size":  1637
+                                      },
+                                      {
+                                          "name":  "test_flash_mla_glm5_mla_remote.py",
+                                          "type":  "file",
+                                          "size":  1951
+                                      },
+                                      {
+                                          "name":  "test_flash_mla_glm5_remote.py",
+                                          "type":  "file",
+                                          "size":  1834
+                                      },
+                                      {
+                                          "name":  "train_compare_glm5_variants.py",
+                                          "type":  "file",
+                                          "size":  6751
+                                      }
+                                  ]
+                 },
+                 {
+                     "name":  "README.md",
+                     "type":  "file",
+                     "size":  839
+                 },
+                 {
+                     "name":  "REPRO_LESSONS.md",
+                     "type":  "file",
+                     "size":  5779
+                 }
+             ]
+}
