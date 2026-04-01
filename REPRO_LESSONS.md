@@ -149,3 +149,46 @@ This work demonstrated that:
 - a working cu126 FlashMLA reduced patch set
 
 That means the project has moved beyond "source reconstruction" and into "architecture study platform".
+
+## 11. Real Profiling And Trace Analysis
+
+After the model paths were stable, we exported real profiling traces from short Nano5 runs and fed them into `Tensorearch`.
+
+Real 40-step profiling:
+
+- `MLA`
+  - final loss: `3.0897`
+  - throughput: `1377.4 tok/s`
+- `DSA`
+  - final loss: `2.2174`
+  - throughput: `458.4 tok/s`
+
+`Tensorearch` on the real traces reported:
+
+- `MLA`
+  - bottleneck: `blk0.q_proj`
+  - obedience: `0.4619`
+  - intelligence: `0.0808`
+  - coupling: `0.0839`
+- `DSA`
+  - bottleneck: `blk1.flash_dsa`
+  - obedience: `0.5008`
+  - intelligence: `0.0190`
+  - coupling: `0.0578`
+
+This gives a stronger conclusion than loss alone:
+
+- `DSA` is more target-aligned and structurally tighter
+- `MLA` is faster, more flexible, and more strongly coupled
+- `DSA` pressure concentrates around `indexer -> flash_dsa`
+- `MLA` pressure concentrates around `kv_latent -> flash_mla`
+
+Another useful interpretation is behavioral:
+
+- `DSA` shows higher obedience but lower structural intelligence than `MLA`
+- this makes `DSA` feel more rigid, more disciplined, and more target-aligned
+- `MLA` feels more fluid, more adaptive, and more structurally flexible
+
+In practice, `DSA` behaves more like a disciplined sparse retrieval system, while `MLA` behaves more like a more free-flowing latent attention system.
+
+This is why real trace export matters. Without it, the reconstruction only tells us what optimization does. With it, we also get a structural explanation for the observed tradeoff.
