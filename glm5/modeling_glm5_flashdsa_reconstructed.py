@@ -32,6 +32,7 @@ from transformers.configuration_utils import PreTrainedConfig
 from transformers.generation.utils import GenerationMixin
 from transformers.modeling_outputs import BaseModelOutputWithPast, CausalLMOutputWithPast
 from transformers.modeling_utils import PreTrainedModel
+from flash_dsa_interface import FlashDSABridge
 
 try:
     from flash_mla import flash_mla_sparse_fwd
@@ -275,17 +276,24 @@ class SparseDSAAttention(nn.Module):
 
         self.dropout = nn.Dropout(config.attention_dropout)
 
+        if self.attention_backend == "flash_dsa":
+            self.flash_dsa_bridge = FlashDSABridge(
+                config=config,
+                num_kv_heads=self.num_kv_heads,
+                num_key_value_groups=self.num_key_value_groups,
+                head_dim=self.head_dim,
+                value_head_dim=self.value_head_dim,
+                scaling=self.scaling,
+                dropout=self.dropout,
+                o_proj=self.o_proj,
+                sparse_mask_builder=self._build_sparse_mask,
+                repeat_kv=repeat_kv,
+            )
+        else:
+            self.flash_dsa_bridge = None
+
     def _flashdsa_int4_roundtrip(self, kv_latent: torch.Tensor) -> torch.Tensor:
-        group = self.config.int4_group_size
-        last = kv_latent.shape[-1]
-        if last % group != 0:
-            raise RuntimeError(f"flash_dsa requires latent dim divisible by int4_group_size, got {last} vs {group}")
-        x = kv_latent.float()
-        xg = x.view(*x.shape[:-1], last // group, group)
-        scale = xg.abs().amax(dim=-1, keepdim=True).clamp_min(1e-6) / 7.0
-        q = torch.round(xg / scale).clamp(-8, 7)
-        deq = (q * scale).view_as(x)
-        return deq.to(dtype=kv_latent.dtype)
+        return self.flash_dsa_bridge.int4_roundtrip(kv_latent)
 
     def _build_flash_dsa_indices(
         self,
@@ -293,22 +301,7 @@ class SparseDSAAttention(nn.Module):
         index_k: torch.Tensor,
         attention_mask: Optional[torch.Tensor],
     ) -> torch.Tensor:
-        scores = torch.matmul(index_q, index_k.transpose(-2, -1))
-        sparse_mask = self._build_sparse_mask(scores, attention_mask)
-        scores = scores.masked_fill(sparse_mask, float("-inf"))
-        topk = self.config.dsa_topk
-        valid_topk = min(topk, scores.shape[-1])
-        top_idx = scores.topk(k=valid_topk, dim=-1).indices
-        bsz, _, s_q, _ = scores.shape
-        indices = torch.full(
-            (bsz, self.num_kv_heads, s_q, topk),
-            -1,
-            device=scores.device,
-            dtype=torch.int32,
-        )
-        reduced_idx = top_idx[:, :1]
-        indices[:, :, :, :valid_topk] = reduced_idx.to(torch.int32)
-        return indices
+        return self.flash_dsa_bridge.build_indices(index_q, index_k, attention_mask)
 
     def _flashdsa_sparse_attention(
         self,
@@ -318,32 +311,7 @@ class SparseDSAAttention(nn.Module):
         kv_latent: torch.Tensor,
         attention_mask: Optional[torch.Tensor],
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        kv_bf16 = self._flashdsa_int4_roundtrip(kv_latent)
-        k = repeat_kv(kv_bf16[..., : self.head_dim], self.num_key_value_groups)
-        v = repeat_kv(kv_bf16[..., self.head_dim : self.head_dim + self.value_head_dim], self.num_key_value_groups)
-        scores = torch.matmul(q, k.transpose(-2, -1)) * self.scaling
-        dsa_indices = self._build_flash_dsa_indices(index_q, index_k, attention_mask)
-        sparse_mask = torch.ones_like(scores, dtype=torch.bool)
-        topk = dsa_indices.shape[-1]
-        expanded = dsa_indices[:, :, :, :topk].clamp_min(0).to(torch.int64)
-        sparse_mask[:, :1].scatter_(-1, expanded, False)
-        sparse_mask = sparse_mask.expand_as(scores)
-        if attention_mask is not None:
-            if attention_mask.dim() == 4:
-                sparse_mask |= attention_mask.expand_as(sparse_mask)
-            else:
-                sparse_mask |= attention_mask[:, None, :, :].expand_as(sparse_mask)
-        all_masked = sparse_mask.all(dim=-1)
-        if all_masked.any():
-            diag = torch.arange(scores.shape[-2], device=scores.device)
-            diag = diag.clamp_max(scores.shape[-1] - 1)
-            sparse_mask[..., diag, diag] = False
-        scores = scores.masked_fill(sparse_mask, float("-inf"))
-        attn = F.softmax(scores, dim=-1, dtype=torch.float32).to(q.dtype)
-        attn = self.dropout(attn)
-        out = torch.matmul(attn, v)
-        out = out.transpose(1, 2).contiguous().view(q.shape[0], q.shape[-2], -1)
-        return self.o_proj(out), attn
+        return self.flash_dsa_bridge.sparse_attention(q, index_q, index_k, kv_latent, attention_mask)
 
     def _build_sparse_mask(
         self,
