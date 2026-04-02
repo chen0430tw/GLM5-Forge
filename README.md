@@ -19,6 +19,20 @@ Project hierarchy:
 - `GLM5-Forge` is the top-level project
 - `glm5` is the model-reconstruction core
 - `flashmla_cu126_patch` is supporting backend infrastructure
+- `FLASHMLA_CUDA_MATRIX.md` records the observed `FlashMLA` behavior across `cu126/cu128/cu129/cu130`
+
+FlashMLA backend status:
+
+- `cu126`
+  - reduced compatibility build
+- `cu128`
+  - native container path works with `SM100` disabled
+- `cu129`
+  - full-ish upstream path validated with `sm100/sm90`, import, and `GLM5 MLA` smoke
+- `cu130`
+  - build and import now work after a CUDA 13 `cccl` include-path fix
+  - runtime on the tested RunPod host is still blocked by driver compatibility
+  - on Vast `B200` (`CUDA 13.2`, driver `595.45.04`), `FlashMLA` now builds, imports, and runs `GLM5 MLA` smoke successfully
 
 Current result:
 
@@ -27,6 +41,22 @@ Current result:
 - training tradeoff observed:
   - `MLA` is faster
   - `DSA` is stronger
+
+Real B200 result:
+
+- Vast `B200` / `CUDA 13.2`
+  - `FlashMLA` built successfully with the CUDA 13 `cccl` include-path fix
+  - `flash_mla` import passed
+  - `GLM5 MLA` native `FlashMLA` smoke passed
+- B200 `100`-step comparison:
+  - `MLA + FlashMLA`
+    - final loss: `3.4788`
+    - best loss: `2.8717`
+    - throughput: `3832.0 tok/s`
+  - `FlashDSA`
+    - final loss: `2.3179`
+    - best loss: `1.6720`
+    - throughput: `2574.7 tok/s`
 
 Real profiling and Tensorearch result:
 

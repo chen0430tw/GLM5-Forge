@@ -192,3 +192,55 @@ Another useful interpretation is behavioral:
 In practice, `DSA` behaves more like a disciplined sparse retrieval system, while `MLA` behaves more like a more free-flowing latent attention system.
 
 This is why real trace export matters. Without it, the reconstruction only tells us what optimization does. With it, we also get a structural explanation for the observed tradeoff.
+
+## 12. Real B200 Validation
+
+The reconstruction was also pushed onto a real `B200` (`Blackwell`, `sm100`) machine on Vast.ai.
+
+This mattered because it moved the project beyond:
+
+- reduced `cu126` survival patches
+- `cu128` container validation
+- `cu129` full-ish upstream validation
+
+and into an actual `sm100` environment.
+
+Observed environment:
+
+- GPU: `NVIDIA B200`
+- driver: `595.45.04`
+- CUDA: `13.2`
+- torch: `2.10.0a0+a36e1d39eb.nv26.01.42222806`
+
+The main build issue was again the CUDA 13 header layout:
+
+- `cutlass.h` wanted `cuda/std/utility`
+- CUDA 13 placed the needed headers under:
+  - `/usr/local/cuda/targets/x86_64-linux/include/cccl`
+
+Once that include path was added to `setup.py`, `FlashMLA`:
+
+- built successfully
+- imported successfully
+- and ran native `GLM5 MLA` smoke successfully on `B200`
+
+That gives a stronger conclusion than earlier stages:
+
+- the reconstruction is no longer only validated on Hopper (`H100/H200`)
+- it is now also validated on real `Blackwell/B200`
+
+Short-run `100`-step result on `B200`:
+
+- `MLA + FlashMLA`
+  - final loss: `3.4788`
+  - best loss: `2.8717`
+  - throughput: `3832.0 tok/s`
+- `FlashDSA`
+  - final loss: `2.3179`
+  - best loss: `1.6720`
+  - throughput: `2574.7 tok/s`
+
+So the high-level tradeoff remained stable even after moving to real `Blackwell`:
+
+- `MLA` stayed faster
+- `DSA` stayed stronger
